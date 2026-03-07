@@ -6,8 +6,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,8 +19,6 @@ import java.util.Collections;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
-
     private final JwtUtil jwtUtil;
     private final UsersRepository usersRepository;
 
@@ -32,15 +28,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.usersRepository = usersRepository;
     }
 
-    // Bỏ qua filter cho endpoint auth và OPTIONS requests
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        // Bỏ qua tất cả OPTIONS requests (CORS preflight)
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            return true;
-        }
-        return path.startsWith("/api/auth");
+        // Bỏ qua cả OPTIONS request để tránh lỗi CORS
+        return path.startsWith("/api/auth") || request.getMethod().equals("OPTIONS");
     }
 
     @Override
@@ -50,70 +42,54 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        System.out.println("JwtAuthenticationFilter: processing " + request.getMethod() + " " + request.getRequestURI());
 
-        // Không có header hoặc sai format → bỏ qua
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            logger.debug("No Bearer token found in request");
+            System.out.println("JwtAuthenticationFilter: No Bearer token found, continuing filter chain");
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
             String token = authHeader.substring(7);
-            logger.debug("Extracted token: {}", token);
+            System.out.println("JwtAuthenticationFilter: Token extracted: " + token.substring(0, Math.min(20, token.length())) + "...");
 
             if (!jwtUtil.validateToken(token)) {
-                logger.warn("Token validation failed");
+                System.out.println("JwtAuthenticationFilter: Token validation failed");
                 filterChain.doFilter(request, response);
                 return;
             }
+            System.out.println("JwtAuthenticationFilter: Token validated successfully");
 
             String username = jwtUtil.extractUsername(token);
-            logger.debug("Token username: {}", username);
+            System.out.println("JwtAuthenticationFilter: Username from token: " + username);
 
-            if (username != null &&
-                SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                Users user = usersRepository
-                        .findByUsername(username)
-                        .orElse(null);
-
-                if (user != null) {
-                    logger.debug("User found in DB: {}, role: {}", username, user.getRole());
+                Users user = usersRepository.findByUsername(username).orElse(null);
+                if (user == null) {
+                    System.out.println("JwtAuthenticationFilter: User not found in database: " + username);
+                } else {
+                    System.out.println("JwtAuthenticationFilter: User found: " + user.getUsername() + ", role: " + user.getRole());
 
                     String role = user.getRole();
-
-                    // Đảm bảo luôn có ROLE_
                     if (!role.startsWith("ROLE_")) {
                         role = "ROLE_" + role;
                     }
 
-                    SimpleGrantedAuthority authority =
-                            new SimpleGrantedAuthority(role);
-
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    username,
-                                    null,
-                                    Collections.singletonList(authority)
-                            );
+                            new UsernamePasswordAuthenticationToken(username, null, Collections.singletonList(authority));
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    authentication.setDetails(
-                            new WebAuthenticationDetailsSource()
-                                    .buildDetails(request)
-                    );
-
-                    SecurityContextHolder.getContext()
-                            .setAuthentication(authentication);
-                    logger.info("Authentication set for user: {}", username);
-                } else {
-                    logger.warn("User not found in database: {}", username);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    System.out.println("JwtAuthenticationFilter: Authentication set for user: " + username);
                 }
             }
 
         } catch (Exception e) {
-            logger.error("JWT authentication error: {}", e.getMessage(), e);
-            // Không set authentication, request sẽ bị chặn
+            System.out.println("JwtAuthenticationFilter: Exception during authentication: " + e.getMessage());
+            e.printStackTrace();
         }
 
         filterChain.doFilter(request, response);
