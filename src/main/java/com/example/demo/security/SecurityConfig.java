@@ -46,12 +46,11 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // 🔥 Cho phép preflight CORS
+                        // Cho phép preflight CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // ===== PUBLIC =====
+                        // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
-
                         .requestMatchers(
                                 "/api/posts",
                                 "/api/posts/**",
@@ -61,7 +60,7 @@ public class SecurityConfig {
                                 "/api/quizzes/leaderboard"
                         ).permitAll()
 
-                        // ===== AUTHENTICATED =====
+                        // Authenticated endpoints
                         .requestMatchers(
                                 "/api/posts/create",
                                 "/api/posts/*/comments",
@@ -71,7 +70,7 @@ public class SecurityConfig {
                                 "/api/user/**"
                         ).authenticated()
 
-                        // ===== ADMIN =====
+                        // Admin endpoints
                         .requestMatchers("/api/admin/**")
                         .hasRole("ADMIN")
 
@@ -98,19 +97,19 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-
         CorsConfiguration configuration = new CorsConfiguration();
 
+        // Cho phép tất cả các origin (có thể chỉ định cụ thể nếu cần)
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        // Không cho phép gửi credentials (cookies) vì dùng token trong header
         configuration.setAllowCredentials(false);
+        // Thời gian cache preflight
+        configuration.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-
         return source;
     }
 }
