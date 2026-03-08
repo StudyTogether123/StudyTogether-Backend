@@ -7,6 +7,7 @@ import com.example.demo.repository.QuizRepository;
 import com.example.demo.repository.QuizResultRepository;
 import com.example.demo.repository.UsersRepository;
 import com.example.demo.dto.QuizDTO;
+import com.example.demo.dto.QuizHistoryDTO;
 import com.example.demo.dto.request.SubmitQuizRequest;
 import com.example.demo.service.QuizService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,8 +85,17 @@ public class QuizController {
         String username = auth.getName();
         return usersRepository.findByUsername(username)
                 .map(user -> {
-                    List<QuizResult> history = quizResultRepository.findByUserOrderByCompletedAtDesc(user);
-                    return ResponseEntity.ok(history);
+                    List<QuizResult> results = quizResultRepository.findByUserOrderByCompletedAtDesc(user);
+                    List<QuizHistoryDTO> dtos = results.stream()
+                            .map(r -> new QuizHistoryDTO(
+                                    r.getId(),
+                                    r.getQuiz() != null ? r.getQuiz().getTitle() : "Quiz",
+                                    r.getScore(),
+                                    r.getTotalQuestions(),
+                                    r.getCompletedAt()
+                            ))
+                            .collect(Collectors.toList());
+                    return ResponseEntity.ok(dtos);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
