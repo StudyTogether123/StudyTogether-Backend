@@ -15,13 +15,15 @@ public class PasswordResetToken {
     private String email;
 
     @Column(nullable = false)
-    private String otp; // mã OTP 6 chữ số
+    private String otp; // Mã OTP 6 chữ số
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "expiry_date")
     private LocalDateTime expiryDate;
 
+    @Column(nullable = false)
     private boolean used = false;
 
+    // Constructors
     public PasswordResetToken() {}
 
     public PasswordResetToken(String email, String otp, LocalDateTime expiryDate) {
@@ -31,18 +33,43 @@ public class PasswordResetToken {
     }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getOtp() { return otp; }
-    public void setOtp(String otp) { this.otp = otp; }
+    public String getEmail() {
+        return email;
+    }
 
-    public LocalDateTime getExpiryDate() { return expiryDate; }
-    public void setExpiryDate(LocalDateTime expiryDate) { this.expiryDate = expiryDate; }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-    public boolean isUsed() { return used; }
-    public void setUsed(boolean used) { this.used = used; }
+    public String getOtp() {
+        return otp;
+    }
+
+    public void setOtp(String otp) {
+        this.otp = otp;
+    }
+
+    public LocalDateTime getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDateTime expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+
+    public boolean isUsed() {
+        return used;
+    }
+
+    public void setUsed(boolean used) {
+        this.used = used;
+    }
 }

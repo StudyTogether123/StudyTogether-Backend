@@ -8,11 +8,7 @@ import java.util.Optional;
 
 @Repository
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
-    
     Optional<PasswordResetToken> findByEmail(String email);
-
     Optional<PasswordResetToken> findByEmailAndOtpAndExpiryDateAfterAndUsedFalse(
             String email, String otp, LocalDateTime now);
-
-    void deleteByEmail(String email);  // Thêm dòng này để xóa tất cả token của email
 }
