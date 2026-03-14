@@ -7,6 +7,7 @@ public class QuizResultDetailDTO {
     private int totalQuestions;
     private int percentage;
     private int pointsEarned;
+    private boolean counted;          // Thêm trường này
     private List<QuestionResultDTO> details;
 
     // Getters and Setters
@@ -21,6 +22,9 @@ public class QuizResultDetailDTO {
 
     public int getPointsEarned() { return pointsEarned; }
     public void setPointsEarned(int pointsEarned) { this.pointsEarned = pointsEarned; }
+
+    public boolean isCounted() { return counted; }
+    public void setCounted(boolean counted) { this.counted = counted; }
 
     public List<QuestionResultDTO> getDetails() { return details; }
     public void setDetails(List<QuestionResultDTO> details) { this.details = details; }

@@ -85,7 +85,8 @@ public class QuizController {
                                     r.getQuiz() != null ? r.getQuiz().getTitle() : "Quiz",
                                     r.getScore(),
                                     r.getTotalQuestions(),
-                                    r.getCompletedAt()
+                                    r.getCompletedAt(),
+                                    r.isCounted()  // thêm trường counted
                             ))
                             .collect(Collectors.toList());
                     return ResponseEntity.ok(dtos);

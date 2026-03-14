@@ -14,6 +14,8 @@ import com.example.demo.dto.QuestionResultDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
@@ -40,11 +42,15 @@ public class QuizService {
         return quizRepository.findByDate(LocalDate.now()).orElse(null);
     }
 
+    @Transactional
     public QuizResultDetailDTO submitQuiz(SubmitQuizRequest request) throws Exception {
         Quiz quiz = quizRepository.findById(request.getQuizId())
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
         Users user = usersRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Kiểm tra xem user đã có kết quả cho quiz này chưa (bất kể counted)
+        boolean alreadyDone = quizResultRepository.existsByUserAndQuiz(user, quiz);
 
         List<Question> questions = questionRepository.findByQuiz(quiz);
         int score = 0;
@@ -68,21 +74,25 @@ public class QuizService {
             details.add(qr);
         }
 
-        // Lưu kết quả vào database (nếu cần)
+        // Lưu kết quả vào database
         String answersJson = objectMapper.writeValueAsString(request.getAnswers());
         QuizResult result = new QuizResult(user, quiz, score, questions.size(), answersJson);
+        result.setCounted(!alreadyDone); // true nếu là lần đầu
         quizResultRepository.save(result);
 
-        // Cập nhật điểm user
-        user.setPoints(user.getPoints() + score * 10);
-        usersRepository.save(user);
+        // Nếu là lần đầu (counted = true) thì cộng điểm
+        if (!alreadyDone) {
+            user.setPoints(user.getPoints() + score * 10);
+            usersRepository.save(user);
+        }
 
         // Tạo DTO trả về
         QuizResultDetailDTO dto = new QuizResultDetailDTO();
         dto.setScore(score);
         dto.setTotalQuestions(questions.size());
         dto.setPercentage(questions.size() > 0 ? (score * 100 / questions.size()) : 0);
-        dto.setPointsEarned(score * 10);
+        dto.setPointsEarned(!alreadyDone ? score * 10 : 0);
+        dto.setCounted(!alreadyDone);
         dto.setDetails(details);
         return dto;
     }

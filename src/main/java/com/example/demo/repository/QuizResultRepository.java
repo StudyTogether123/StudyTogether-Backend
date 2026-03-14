@@ -25,4 +25,7 @@ public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
     Long countByQuiz(Quiz quiz);
 
     Long countByUser(Users user);
+
+    // Kiểm tra xem user đã có kết quả cho quiz này chưa (bất kể counted)
+    boolean existsByUserAndQuiz(Users user, Quiz quiz);
 }

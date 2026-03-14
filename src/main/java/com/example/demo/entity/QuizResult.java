@@ -30,6 +30,9 @@ public class QuizResult {
 
     private String answers; // Lưu dưới dạng JSON
 
+    @Column(nullable = false)
+    private boolean counted = true; // Thêm trường counted, mặc định true (lần đầu được tính điểm)
+
     public QuizResult() {}
 
     public QuizResult(Users user, Quiz quiz, int score, int totalQuestions, String answers) {
@@ -40,6 +43,7 @@ public class QuizResult {
         this.percentage = totalQuestions > 0 ? (double) score / totalQuestions * 100 : 0;
         this.answers = answers;
         this.completedAt = LocalDateTime.now();
+        this.counted = true; // mặc định là true, có thể set lại sau
     }
 
     // Getters và Setters
@@ -66,4 +70,7 @@ public class QuizResult {
 
     public String getAnswers() { return answers; }
     public void setAnswers(String answers) { this.answers = answers; }
+
+    public boolean isCounted() { return counted; }
+    public void setCounted(boolean counted) { this.counted = counted; }
 }
