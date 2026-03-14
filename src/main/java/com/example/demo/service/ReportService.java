@@ -1,23 +1,18 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.ReportDTO;
-import com.example.demo.dto.request.ApproveReportRequest;
-import com.example.demo.dto.request.RejectReportRequest;
-import com.example.demo.entity.Post;
-import com.example.demo.entity.Report;
+import com.example.demo.dto.request.CreateReportRequest;
+import com.example.demo.entity.*;
 import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.ReportRepository;
+import com.example.demo.repository.UsersRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class ReportService {
@@ -26,72 +21,73 @@ public class ReportService {
     private ReportRepository reportRepository;
 
     @Autowired
+    private UsersRepository usersRepository;
+
+    @Autowired
     private PostRepository postRepository;
 
-    // Lấy danh sách báo cáo (phân trang)
-    public List<ReportDTO> getReports(int page, int limit, String status) {
-        Pageable pageable = PageRequest.of(page - 1, limit, Sort.by("createdAt").descending());
-        Page<Report> reportPage;
-        if (status != null && !status.isEmpty()) {
-            reportPage = reportRepository.findByStatusOrderByCreatedAtDesc(status, pageable);
-        } else {
-            reportPage = reportRepository.findAllByOrderByCreatedAtDesc(pageable);
-        }
-        return reportPage.stream().map(ReportDTO::new).collect(Collectors.toList());
+    @Transactional
+    public ReportDTO createReport(Long userId, CreateReportRequest request) {
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        Post post = postRepository.findById(request.getPostId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết"));
+
+        Report report = new Report(user, post, request.getReason(), request.getDescription());
+        report = reportRepository.save(report);
+
+        return convertToDTO(report);
     }
 
-    // Lấy chi tiết một báo cáo
+    @Transactional(readOnly = true)
+    public Page<ReportDTO> getReports(Pageable pageable) {
+        return reportRepository.findAll(pageable).map(this::convertToDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReportDTO> getReportsByStatus(ReportStatus status, Pageable pageable) {
+        return reportRepository.findByStatus(status, pageable).map(this::convertToDTO);
+    }
+
+    @Transactional(readOnly = true)
     public ReportDTO getReport(Long id) {
         Report report = reportRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Report not found"));
-        return new ReportDTO(report);
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo"));
+        return convertToDTO(report);
     }
 
-    // Phê duyệt báo cáo (có thể cập nhật bài viết)
     @Transactional
-    public ReportDTO approveReport(Long id, ApproveReportRequest request, String adminUsername) {
-        Report report = reportRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Report not found"));
-        if (!"PENDING".equals(report.getStatus())) {
-            throw new RuntimeException("Report is not pending");
-        }
+    public ReportDTO updateReportStatus(Long reportId, ReportStatus status, String adminNotes) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo"));
 
-        // Nếu có cập nhật nội dung bài viết
-        if (request.getUpdatedPostContent() != null && !request.getUpdatedPostContent().isEmpty()) {
-            Post post = report.getPost();
-            post.setContent(request.getUpdatedPostContent());
-            postRepository.save(post);
-        }
+        report.setStatus(status);
+        report.setAdminNotes(adminNotes);
+        report.setUpdatedAt(LocalDateTime.now());
+        report = reportRepository.save(report);
 
-        report.setStatus("APPROVED");
-        report.setResolvedAt(LocalDateTime.now());
-        report.setResolvedBy(adminUsername);
-        report.setAdminNote(request.getAdminNote());
-        reportRepository.save(report);
-
-        return new ReportDTO(report);
+        return convertToDTO(report);
     }
 
-    // Từ chối báo cáo
-    @Transactional
-    public ReportDTO rejectReport(Long id, RejectReportRequest request, String adminUsername) {
-        Report report = reportRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Report not found"));
-        if (!"PENDING".equals(report.getStatus())) {
-            throw new RuntimeException("Report is not pending");
-        }
-
-        report.setStatus("REJECTED");
-        report.setResolvedAt(LocalDateTime.now());
-        report.setResolvedBy(adminUsername);
-        report.setAdminNote(request.getAdminNote());
-        reportRepository.save(report);
-
-        return new ReportDTO(report);
-    }
-
-    // Đếm số lượng báo cáo theo trạng thái (cho dashboard)
+    @Transactional(readOnly = true)
     public long countPending() {
-        return reportRepository.countByStatus("PENDING");
+        return reportRepository.countByStatus(ReportStatus.PENDING);
+    }
+
+    private ReportDTO convertToDTO(Report report) {
+        ReportDTO dto = new ReportDTO();
+        dto.setId(report.getId());
+        dto.setUserId(report.getUser().getId());
+        dto.setUsername(report.getUser().getUsername());
+        dto.setPostId(report.getPost().getId());
+        dto.setPostTitle(report.getPost().getTitle());
+        dto.setReason(report.getReason());
+        dto.setDescription(report.getDescription());
+        dto.setStatus(report.getStatus());
+        dto.setCreatedAt(report.getCreatedAt());
+        dto.setUpdatedAt(report.getUpdatedAt());
+        dto.setAdminNotes(report.getAdminNotes());
+        return dto;
     }
 }

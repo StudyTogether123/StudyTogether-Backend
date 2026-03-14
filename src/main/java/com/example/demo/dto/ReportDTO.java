@@ -1,40 +1,33 @@
 package com.example.demo.dto;
 
-import com.example.demo.entity.Report;
+import com.example.demo.entity.ReportStatus;
 import java.time.LocalDateTime;
 
 public class ReportDTO {
     private Long id;
+    private Long userId;
+    private String username;
     private Long postId;
     private String postTitle;
-    private String reportedBy;
     private String reason;
     private String description;
-    private String status;
+    private ReportStatus status;
     private LocalDateTime createdAt;
-    private LocalDateTime resolvedAt;
-    private String resolvedBy;
-    private String adminNote;
+    private LocalDateTime updatedAt;
+    private String adminNotes;
 
+    // Constructors
     public ReportDTO() {}
-
-    public ReportDTO(Report report) {
-        this.id = report.getId();
-        this.postId = report.getPost().getId();
-        this.postTitle = report.getPost().getTitle();
-        this.reportedBy = report.getReportedBy();
-        this.reason = report.getReason();
-        this.description = report.getDescription();
-        this.status = report.getStatus();
-        this.createdAt = report.getCreatedAt();
-        this.resolvedAt = report.getResolvedAt();
-        this.resolvedBy = report.getResolvedBy();
-        this.adminNote = report.getAdminNote();
-    }
 
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
     public Long getPostId() { return postId; }
     public void setPostId(Long postId) { this.postId = postId; }
@@ -42,27 +35,21 @@ public class ReportDTO {
     public String getPostTitle() { return postTitle; }
     public void setPostTitle(String postTitle) { this.postTitle = postTitle; }
 
-    public String getReportedBy() { return reportedBy; }
-    public void setReportedBy(String reportedBy) { this.reportedBy = reportedBy; }
-
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public ReportStatus getStatus() { return status; }
+    public void setStatus(ReportStatus status) { this.status = status; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getResolvedAt() { return resolvedAt; }
-    public void setResolvedAt(LocalDateTime resolvedAt) { this.resolvedAt = resolvedAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public String getResolvedBy() { return resolvedBy; }
-    public void setResolvedBy(String resolvedBy) { this.resolvedBy = resolvedBy; }
-
-    public String getAdminNote() { return adminNote; }
-    public void setAdminNote(String adminNote) { this.adminNote = adminNote; }
+    public String getAdminNotes() { return adminNotes; }
+    public void setAdminNotes(String adminNotes) { this.adminNotes = adminNotes; }
 }
