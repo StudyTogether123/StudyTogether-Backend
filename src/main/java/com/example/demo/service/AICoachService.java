@@ -12,7 +12,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class AICoachService {
@@ -39,7 +38,6 @@ public class AICoachService {
 
         log.info("Bắt đầu xử lý generateAdvice với {} lỗi", mistakes.size());
 
-        // Thử gọi API AI
         try {
             String prompt = buildPrompt(mistakes);
             log.debug("Prompt gửi đến AI: {}", prompt);
@@ -48,15 +46,29 @@ public class AICoachService {
             return aiResponse;
         } catch (Exception e) {
             log.error("Lỗi khi gọi AI: {}", e.getMessage(), e);
-            // In thêm thông tin cấu hình (ẩn key)
             log.debug("Cấu hình AI - URL: {}, Model: {}, Key: {}", apiUrl, model, apiKey != null ? "***" : "null");
-            // Nếu lỗi, dùng fallback thông minh hơn
             return buildSmartFallbackAdvice(mistakes);
         }
     }
 
+    /**
+     * Gọi AI trực tiếp, không fallback. Ném exception nếu lỗi.
+     */
+    public String callAIDirectly(AICoachRequest request) throws Exception {
+        List<Mistake> mistakes = request.getMistakes();
+        if (mistakes == null || mistakes.isEmpty()) {
+            return "Không có lỗi để phân tích.";
+        }
+        String prompt = buildPrompt(mistakes);
+        return callAI(prompt);
+    }
+
+    // Getters để controller lấy thông tin cấu hình
+    public String getApiKey() { return apiKey; }
+    public String getApiUrl() { return apiUrl; }
+    public String getModel() { return model; }
+
     private String buildPrompt(List<Mistake> mistakes) {
-        // Giống như trước
         StringBuilder sb = new StringBuilder();
         sb.append("Bạn là một gia sư AI thông minh, chuyên phân tích lỗi sai và đưa ra lời khuyên học tập. ");
         sb.append("Hãy xem xét các câu hỏi mà người học đã trả lời sai dưới đây, phân tích xem họ yếu ở mảng kiến thức nào, ");
@@ -125,15 +137,10 @@ public class AICoachService {
         }
     }
 
-    /**
-     * Fallback thông minh: phân tích lỗi theo chủ đề và đưa ra gợi ý
-     */
     private String buildSmartFallbackAdvice(List<Mistake> mistakes) {
         log.info("Sử dụng fallback thông minh do lỗi kết nối AI");
-        // Đếm số lỗi theo chủ đề (dựa vào nội dung câu hỏi hoặc link)
         Map<String, Integer> topicCount = new HashMap<>();
         for (Mistake m : mistakes) {
-            // Trích xuất chủ đề từ câu hỏi (có thể dùng keyword đơn giản)
             String question = m.getQuestion().toLowerCase();
             if (question.contains("đàm phán") || question.contains("negotiation")) {
                 topicCount.put("Đàm phán", topicCount.getOrDefault("Đàm phán", 0) + 1);
@@ -146,13 +153,11 @@ public class AICoachService {
             }
         }
 
-        // Xác định chủ đề yếu nhất
         String weakestTopic = topicCount.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
                 .orElse("Kiến thức tổng quát");
 
-        // Xây dựng lời khuyên
         StringBuilder advice = new StringBuilder();
         advice.append("🧠 **Phân tích điểm yếu của bạn**\n\n");
         advice.append("Dựa trên các câu sai, tôi nhận thấy bạn cần cải thiện nhiều nhất ở mảng **").append(weakestTopic).append("**.\n\n");
