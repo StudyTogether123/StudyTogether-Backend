@@ -9,9 +9,8 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class AICoachService {
@@ -34,17 +33,19 @@ public class AICoachService {
             return "🎉 Chúc mừng! Bạn đã trả lời đúng tất cả các câu hỏi. Hãy tiếp tục phát huy!";
         }
 
-        String prompt = buildPrompt(mistakes);
-
+        // Thử gọi API AI
         try {
+            String prompt = buildPrompt(mistakes);
             return callAI(prompt);
         } catch (Exception e) {
             e.printStackTrace();
-            return buildFallbackAdvice(mistakes);
+            // Nếu lỗi, dùng fallback thông minh hơn
+            return buildSmartFallbackAdvice(mistakes);
         }
     }
 
     private String buildPrompt(List<Mistake> mistakes) {
+        // Giống như trước
         StringBuilder sb = new StringBuilder();
         sb.append("Bạn là một gia sư AI thông minh, chuyên phân tích lỗi sai và đưa ra lời khuyên học tập. ");
         sb.append("Hãy xem xét các câu hỏi mà người học đã trả lời sai dưới đây, phân tích xem họ yếu ở mảng kiến thức nào, ");
@@ -87,35 +88,72 @@ public class AICoachService {
         ));
         requestBody.put("temperature", 0.7);
         requestBody.put("max_tokens", 1000);
-        requestBody.put("top_p", 0.9);
-        requestBody.put("frequency_penalty", 0.5);
-        requestBody.put("presence_penalty", 0.5);
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
         ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, String.class);
 
         JsonNode root = objectMapper.readTree(response.getBody());
-        // DeepSeek trả về theo format OpenAI: choices[0].message.content
         return root.path("choices").get(0).path("message").path("content").asText();
     }
 
-    private String buildFallbackAdvice(List<Mistake> mistakes) {
-        StringBuilder advice = new StringBuilder("⚠️ **Hiện tại AI chưa thể kết nối, nhưng bạn có thể ôn tập theo gợi ý dưới đây:**\n\n");
-
+    /**
+     * Fallback thông minh: phân tích lỗi theo chủ đề và đưa ra gợi ý
+     */
+    private String buildSmartFallbackAdvice(List<Mistake> mistakes) {
+        // Đếm số lỗi theo chủ đề (dựa vào nội dung câu hỏi hoặc link)
+        Map<String, Integer> topicCount = new HashMap<>();
         for (Mistake m : mistakes) {
-            advice.append("📌 ").append(m.getQuestion()).append("\n");
-            advice.append("   ➤ Bạn đã chọn: ").append(m.getUserAnswer()).append("\n");
-            advice.append("   ➤ Đáp án đúng: ").append(m.getCorrectAnswer()).append("\n");
-            if (m.getExplanation() != null && !m.getExplanation().isEmpty()) {
-                advice.append("   📘 ").append(m.getExplanation()).append("\n");
+            // Trích xuất chủ đề từ câu hỏi (có thể dùng keyword đơn giản)
+            String question = m.getQuestion().toLowerCase();
+            if (question.contains("đàm phán") || question.contains("negotiation")) {
+                topicCount.put("Đàm phán", topicCount.getOrDefault("Đàm phán", 0) + 1);
+            } else if (question.contains("thời gian") || question.contains("time management")) {
+                topicCount.put("Quản lý thời gian", topicCount.getOrDefault("Quản lý thời gian", 0) + 1);
+            } else if (question.contains("batna")) {
+                topicCount.put("BATNA", topicCount.getOrDefault("BATNA", 0) + 1);
+            } else {
+                topicCount.put("Kiến thức chung", topicCount.getOrDefault("Kiến thức chung", 0) + 1);
             }
-            if (m.getExplanationLink() != null && !m.getExplanationLink().isEmpty()) {
-                advice.append("   🔗 Đọc thêm: ").append(m.getExplanationLink()).append("\n");
-            }
-            advice.append("\n");
         }
 
-        advice.append("💡 Hãy dành thời gian đọc lại các bài viết được đề cập để củng cố kiến thức. Nếu cần hỗ trợ thêm, hãy thử lại sau!");
+        // Xác định chủ đề yếu nhất
+        String weakestTopic = topicCount.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("Kiến thức tổng quát");
+
+        // Xây dựng lời khuyên
+        StringBuilder advice = new StringBuilder();
+        advice.append("🧠 **Phân tích điểm yếu của bạn**\n\n");
+        advice.append("Dựa trên các câu sai, tôi nhận thấy bạn cần cải thiện nhiều nhất ở mảng **").append(weakestTopic).append("**.\n\n");
+
+        advice.append("📚 **Các chủ đề cần ôn tập:**\n");
+        for (Map.Entry<String, Integer> entry : topicCount.entrySet()) {
+            advice.append("   - ").append(entry.getKey()).append(": ").append(entry.getValue()).append(" lỗi\n");
+        }
+        advice.append("\n");
+
+        advice.append("🔍 **Phương pháp cải thiện:**\n");
+        advice.append("   - Đọc kỹ lại các bài viết được đề cập dưới đây.\n");
+        advice.append("   - Ghi chép lại những khái niệm quan trọng (ví dụ: BATNA, phân biệt position và interest).\n");
+        advice.append("   - Thực hành với các tình huống giả định để áp dụng lý thuyết.\n\n");
+
+        advice.append("📖 **Danh sách bài viết tham khảo:**\n");
+        for (Mistake m : mistakes) {
+            if (m.getExplanationLink() != null && !m.getExplanationLink().isEmpty()) {
+                advice.append("   - ").append(m.getExplanationLink()).append(" : ").append(m.getQuestion()).append("\n");
+            }
+        }
+        advice.append("\n");
+
+        advice.append("💡 **Lộ trình ôn tập đề xuất (1 tuần):**\n");
+        advice.append("   - Ngày 1-2: Đọc và hiểu các bài viết về ").append(weakestTopic).append(".\n");
+        advice.append("   - Ngày 3-4: Làm bài tập trắc nghiệm và tự luận liên quan.\n");
+        advice.append("   - Ngày 5: Ôn tập lại toàn bộ và tự giải thích lại các khái niệm.\n");
+        advice.append("   - Ngày 6-7: Tham gia thảo luận nhóm hoặc viết blog tóm tắt kiến thức.\n\n");
+
+        advice.append("Nếu có thể, hãy kết nối lại AI để nhận lời khuyên chi tiết hơn nhé!");
+
         return advice.toString();
     }
 }
