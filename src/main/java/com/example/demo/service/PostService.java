@@ -24,7 +24,7 @@ public class PostService {
         this.usersRepository = usersRepository;
     }
 
-    // ========== Lấy tất cả bài viết (public) ==========
+    // ========== Lấy tất cả bài viết ==========
     public List<PostDTO> getAllPosts() {
         return postRepository.findAll()
                 .stream()
@@ -32,66 +32,78 @@ public class PostService {
                 .collect(Collectors.toList());
     }
 
-    // ========== Lấy bài viết theo ID (public) ==========
+    // ========== Lấy bài viết theo ID ==========
     public PostDTO getPostById(Long id) {
         return postRepository.findById(id)
                 .map(this::mapToDTO)
                 .orElse(null);
     }
 
-    // ========== Tạo bài viết mới (chỉ admin, author tự động) ==========
+    // ========== Tạo bài viết mới ==========
     @Transactional
     public PostDTO create(CreatePostRequest request, String username) {
-        // Lấy thông tin user để kiểm tra quyền (có thể bỏ qua nếu chỉ dùng để lấy author)
         Users user = usersRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-        // Tạo bài viết với author là username
         Post post = new Post(
                 request.title(),
                 request.content(),
-                username,  // author từ token
+                username,
                 request.category()
         );
-
-        // Nếu request có trường image (chưa có trong CreatePostRequest hiện tại)
-        // if (request.image() != null) post.setImage(request.image());
 
         Post saved = postRepository.save(post);
         return mapToDTO(saved);
     }
 
-    // ========== Cập nhật bài viết (chỉ admin hoặc tác giả) ==========
+    // ========== Cập nhật bài viết (có log chi tiết) ==========
     @Transactional
     public PostDTO update(Long id, UpdatePostRequest request, String username) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết với id: " + id));
+        System.out.println("=== PostService.update: Bắt đầu xử lý ===");
+        System.out.println("ID bài viết: " + id);
+        System.out.println("Người dùng: " + username);
+        System.out.println("Request: title=" + request.title() + ", content=" + request.content() + ", category=" + request.category() + ", locked=" + request.locked());
 
-        // Kiểm tra quyền: admin hoặc chính tác giả
-        checkPermission(post, username);
+        try {
+            // 1. Tìm bài viết
+            Post post = postRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết với id: " + id));
+            System.out.println("Đã tìm thấy bài viết, tác giả: " + post.getAuthor());
 
-        // Cập nhật các trường
-        post.setTitle(request.title());
-        post.setContent(request.content());
-        post.setCategory(request.category());
-        post.setLocked(request.locked());
+            // 2. Kiểm tra quyền
+            checkPermission(post, username);
+            System.out.println("Kiểm tra quyền thành công");
 
-        // Nếu request có trường image (chưa có trong UpdatePostRequest hiện tại)
-        // if (request.image() != null) post.setImage(request.image());
+            // 3. Cập nhật
+            post.setTitle(request.title());
+            post.setContent(request.content());
+            post.setCategory(request.category());
+            post.setLocked(request.locked());
+            System.out.println("Đã cập nhật các trường");
 
-        Post updated = postRepository.save(post);
-        return mapToDTO(updated);
+            // 4. Lưu
+            Post updated = postRepository.save(post);
+            System.out.println("Đã lưu bài viết thành công, ID: " + updated.getId());
+
+            // 5. Chuyển đổi DTO
+            PostDTO dto = mapToDTO(updated);
+            System.out.println("=== Kết thúc thành công ===");
+            return dto;
+
+        } catch (Exception e) {
+            System.out.println("!!! Lỗi trong PostService.update: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
-    // ========== Xóa bài viết (chỉ admin hoặc tác giả) ==========
+    // ========== Xóa bài viết ==========
     @Transactional
     public void deletePost(Long id, String username) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết với id: " + id));
 
-        // Kiểm tra quyền: admin hoặc chính tác giả
         checkPermission(post, username);
-
         postRepository.deleteById(id);
     }
 
