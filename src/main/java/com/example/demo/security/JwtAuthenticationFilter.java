@@ -22,8 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UsersRepository usersRepository;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil,
-                                   UsersRepository usersRepository) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, UsersRepository usersRepository) {
         this.jwtUtil = jwtUtil;
         this.usersRepository = usersRepository;
     }
@@ -31,8 +30,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        // Bỏ qua cả OPTIONS request để tránh lỗi CORS
-        return path.startsWith("/api/auth") || request.getMethod().equals("OPTIONS");
+        // Bỏ qua các request không cần xác thực: auth và OPTIONS
+        return path.startsWith("/api/auth") || "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 
     @Override
@@ -44,6 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
         System.out.println("JwtAuthenticationFilter: processing " + request.getMethod() + " " + request.getRequestURI());
 
+        // Nếu không có token, tiếp tục filter chain (sẽ được xử lý bởi SecurityConfig)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             System.out.println("JwtAuthenticationFilter: No Bearer token found, continuing filter chain");
             filterChain.doFilter(request, response);
@@ -54,6 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
             System.out.println("JwtAuthenticationFilter: Token extracted: " + token.substring(0, Math.min(20, token.length())) + "...");
 
+            // Validate token
             if (!jwtUtil.validateToken(token)) {
                 System.out.println("JwtAuthenticationFilter: Token validation failed");
                 filterChain.doFilter(request, response);
@@ -61,37 +62,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
             System.out.println("JwtAuthenticationFilter: Token validated successfully");
 
+            // Lấy username từ token
             String username = jwtUtil.extractUsername(token);
             System.out.println("JwtAuthenticationFilter: Username from token: " + username);
 
+            // Nếu username hợp lệ và chưa có authentication trong context
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
+                // Tìm user trong database
                 Users user = usersRepository.findByUsername(username).orElse(null);
                 if (user == null) {
                     System.out.println("JwtAuthenticationFilter: User not found in database: " + username);
                 } else {
                     System.out.println("JwtAuthenticationFilter: User found: " + user.getUsername() + ", role: " + user.getRole());
 
+                    // Xử lý role: đảm bảo có tiền tố ROLE_
                     String role = user.getRole();
                     if (!role.startsWith("ROLE_")) {
                         role = "ROLE_" + role;
                     }
 
+                    // Tạo authority
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(username, null, Collections.singletonList(authority));
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
+                    // Set authentication vào SecurityContext
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     System.out.println("JwtAuthenticationFilter: Authentication set for user: " + username);
                 }
             }
 
         } catch (Exception e) {
+            // Ghi log lỗi nhưng không ném ra để tránh lộ thông tin
             System.out.println("JwtAuthenticationFilter: Exception during authentication: " + e.getMessage());
             e.printStackTrace();
         }
 
+        // Tiếp tục filter chain
         filterChain.doFilter(request, response);
     }
 }

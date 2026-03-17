@@ -21,16 +21,16 @@ public class AdminPostController {
         this.postService = postService;
     }
 
-    // Lấy tất cả bài viết (dành cho admin)
     @GetMapping
     public ResponseEntity<List<PostDTO>> getAllPosts() {
+        System.out.println("AdminPostController.getAllPosts called");
         List<PostDTO> posts = postService.getAllPosts();
         return ResponseEntity.ok(posts);
     }
 
-    // Lấy chi tiết bài viết theo ID
     @GetMapping("/{id}")
     public ResponseEntity<PostDTO> getPostById(@PathVariable Long id) {
+        System.out.println("AdminPostController.getPostById called with id: " + id);
         PostDTO post = postService.getPostById(id);
         if (post == null) {
             return ResponseEntity.notFound().build();
@@ -42,6 +42,7 @@ public class AdminPostController {
     public ResponseEntity<PostDTO> updatePost(@PathVariable Long id,
                                               @RequestBody UpdatePostRequest request,
                                               Authentication authentication) {
+        System.out.println("AdminPostController.updatePost called with id: " + id + " by user: " + authentication.getName());
         String username = authentication.getName();
         PostDTO updated = postService.update(id, request, username);
         return ResponseEntity.ok(updated);
@@ -50,6 +51,7 @@ public class AdminPostController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable Long id,
                                            Authentication authentication) {
+        System.out.println("AdminPostController.deletePost called with id: " + id + " by user: " + authentication.getName());
         String username = authentication.getName();
         postService.deletePost(id, username);
         return ResponseEntity.noContent().build();
