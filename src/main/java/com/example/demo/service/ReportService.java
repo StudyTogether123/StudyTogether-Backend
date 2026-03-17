@@ -35,6 +35,7 @@ public class ReportService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết"));
 
         Report report = new Report(user, post, request.getReason(), request.getDescription());
+        report.setReportedBy(user.getUsername()); // Set reportedBy từ username
         report = reportRepository.save(report);
 
         return convertToDTO(report);
@@ -88,6 +89,7 @@ public class ReportService {
         dto.setCreatedAt(report.getCreatedAt());
         dto.setUpdatedAt(report.getUpdatedAt());
         dto.setAdminNotes(report.getAdminNotes());
+        dto.setReportedBy(report.getReportedBy()); // Thêm dòng này
         return dto;
     }
 }

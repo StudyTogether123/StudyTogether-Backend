@@ -15,6 +15,7 @@ public class ReportDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String adminNotes;
+    private String reportedBy; // Thêm trường này
 
     // Constructors
     public ReportDTO() {}
@@ -52,4 +53,8 @@ public class ReportDTO {
 
     public String getAdminNotes() { return adminNotes; }
     public void setAdminNotes(String adminNotes) { this.adminNotes = adminNotes; }
+
+    // Getter và Setter cho reportedBy
+    public String getReportedBy() { return reportedBy; }
+    public void setReportedBy(String reportedBy) { this.reportedBy = reportedBy; }
 }

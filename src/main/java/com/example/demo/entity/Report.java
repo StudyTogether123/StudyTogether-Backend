@@ -37,6 +37,9 @@ public class Report {
     @Column(name = "admin_notes")
     private String adminNotes;
 
+    @Column(name = "reported_by", nullable = false)
+    private String reportedBy;
+
     // Constructors
     public Report() {}
 
@@ -76,4 +79,7 @@ public class Report {
 
     public String getAdminNotes() { return adminNotes; }
     public void setAdminNotes(String adminNotes) { this.adminNotes = adminNotes; }
+
+    public String getReportedBy() { return reportedBy; }
+    public void setReportedBy(String reportedBy) { this.reportedBy = reportedBy; }
 }
