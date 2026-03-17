@@ -4,6 +4,7 @@ import com.example.demo.entity.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -17,10 +18,9 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
-    
-    // Method cho leaderboard
-    List<Users> findTop10ByOrderByPointsDesc();  // Đúng tên method
-    
+
+    List<Users> findTop10ByOrderByPointsDesc();
+
     @Query("SELECT u FROM Users u ORDER BY u.points DESC")
     List<Users> findTopByOrderByPointsDesc(int limit);
 }

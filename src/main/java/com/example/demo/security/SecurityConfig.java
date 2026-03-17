@@ -52,17 +52,22 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(
-                                "/api/posts",
-                                "/api/posts/**",
                                 "/api/activities",
                                 "/api/activities/**",
                                 "/api/quizzes/daily",
                                 "/api/quizzes/leaderboard"
                         ).permitAll()
 
-                        // Authenticated endpoints
+                        // Public GET cho posts (cho phép tất cả xem)
+                        .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
+
+                        // POST, PUT, DELETE chỉ dành cho ADMIN
+                        .requestMatchers(HttpMethod.POST, "/api/posts").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/posts/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/posts/**").hasRole("ADMIN")
+
+                        // Các endpoint yêu cầu xác thực (user thường)
                         .requestMatchers(
-                                "/api/posts/create",
                                 "/api/posts/*/comments",
                                 "/api/quizzes/submit",
                                 "/api/quizzes/history",
@@ -70,9 +75,8 @@ public class SecurityConfig {
                                 "/api/user/**"
                         ).authenticated()
 
-                        // Admin endpoints
-                        .requestMatchers("/api/admin/**")
-                        .hasRole("ADMIN")
+                        // Admin endpoints (đã có ở trên, nhưng giữ lại cho các admin khác)
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 )

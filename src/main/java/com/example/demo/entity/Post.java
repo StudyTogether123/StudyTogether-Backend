@@ -11,13 +11,25 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String title;
+
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
+
     private String author;
+
     private String category;
-    private Boolean locked;
-    private Integer viewCount;
+
+    private Boolean locked = false;
+
+    private Integer viewCount = 0;
+
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    // Thêm trường image (URL ảnh đại diện)
+    private String image;
 
     public Post() {
     }
@@ -32,18 +44,76 @@ public class Post {
         this.createdAt = LocalDateTime.now();
     }
 
-    public Long getId() { return id; }
-    public String getTitle() { return title; }
-    public String getContent() { return content; }
-    public String getAuthor() { return author; }
-    public String getCategory() { return category; }
-    public Boolean getLocked() { return locked; }
-    public Integer getViewCount() { return viewCount; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    // Getter và Setter
+    public Long getId() {
+        return id;
+    }
 
-    public void setTitle(String title) { this.title = title; }
-    public void setContent(String content) { this.content = content; }
-    public void setCategory(String category) { this.category = category; }
-    public void setLocked(Boolean locked) { this.locked = locked; }
-    public void setViewCount(Integer viewCount) { this.viewCount = viewCount; }
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public Boolean getLocked() {
+        return locked;
+    }
+
+    public void setLocked(Boolean locked) {
+        this.locked = locked;
+    }
+
+    public Integer getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(Integer viewCount) {
+        this.viewCount = viewCount;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getImage() {
+        return image;
+    }
+
+    public void setImage(String image) {
+        this.image = image;
+    }
 }

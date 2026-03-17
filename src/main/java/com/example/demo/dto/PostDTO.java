@@ -10,5 +10,6 @@ public record PostDTO(
         String category,
         Boolean locked,
         Integer viewCount,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String image
 ) {}
