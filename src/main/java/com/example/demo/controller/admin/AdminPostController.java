@@ -8,6 +8,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/admin/posts")
 @PreAuthorize("hasRole('ADMIN')")
@@ -17,6 +19,23 @@ public class AdminPostController {
 
     public AdminPostController(PostService postService) {
         this.postService = postService;
+    }
+
+    // Lấy tất cả bài viết (dành cho admin)
+    @GetMapping
+    public ResponseEntity<List<PostDTO>> getAllPosts() {
+        List<PostDTO> posts = postService.getAllPosts();
+        return ResponseEntity.ok(posts);
+    }
+
+    // Lấy chi tiết bài viết theo ID
+    @GetMapping("/{id}")
+    public ResponseEntity<PostDTO> getPostById(@PathVariable Long id) {
+        PostDTO post = postService.getPostById(id);
+        if (post == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(post);
     }
 
     @PutMapping("/{id}")
