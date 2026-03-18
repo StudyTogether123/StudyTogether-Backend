@@ -11,62 +11,87 @@ import com.example.demo.dto.QuizHistoryDTO;
 import com.example.demo.dto.QuizResultDetailDTO;
 import com.example.demo.dto.request.SubmitQuizRequest;
 import com.example.demo.service.QuizService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/quizzes")
 public class QuizController {
 
-    @Autowired
-    private QuizRepository quizRepository;
+    private static final Logger log = LoggerFactory.getLogger(QuizController.class);
 
-    @Autowired
-    private QuizResultRepository quizResultRepository;
+    private final QuizRepository quizRepository;
+    private final QuizResultRepository quizResultRepository;
+    private final UsersRepository usersRepository;
+    private final QuizService quizService;
 
-    @Autowired
-    private UsersRepository usersRepository;
-
-    @Autowired
-    private QuizService quizService;
+    public QuizController(QuizRepository quizRepository,
+                          QuizResultRepository quizResultRepository,
+                          UsersRepository usersRepository,
+                          QuizService quizService) {
+        this.quizRepository = quizRepository;
+        this.quizResultRepository = quizResultRepository;
+        this.usersRepository = usersRepository;
+        this.quizService = quizService;
+    }
 
     @GetMapping("/daily")
     public ResponseEntity<QuizDTO> getDailyQuiz() {
-        Quiz quiz = quizRepository.findByDate(LocalDate.now()).orElse(null);
+        LocalDate today = LocalDate.now();
+        log.info("🔍 GET /daily - Today's date: {}", today);
+
+        Quiz quiz = quizRepository.findByDate(today).orElse(null);
         if (quiz == null) {
+            log.warn("⚠️ No quiz found for date: {}", today);
             return ResponseEntity.notFound().build();
         }
+
+        log.info("✅ Quiz found: id={}, title={}, active={}", quiz.getId(), quiz.getTitle(), quiz.isActive());
         return ResponseEntity.ok(convertToDTO(quiz, false));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<QuizDTO> getQuizById(@PathVariable Long id) {
+        log.info("🔍 GET /{}", id);
         return quizRepository.findById(id)
-                .map(quiz -> ResponseEntity.ok(convertToDTO(quiz, true)))
-                .orElse(ResponseEntity.notFound().build());
+                .map(quiz -> {
+                    log.info("✅ Quiz found: id={}, title={}", quiz.getId(), quiz.getTitle());
+                    return ResponseEntity.ok(convertToDTO(quiz, true));
+                })
+                .orElseGet(() -> {
+                    log.warn("⚠️ Quiz not found with id: {}", id);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     @PostMapping("/submit")
     public ResponseEntity<?> submitQuiz(@RequestBody SubmitQuizRequest request) {
+        log.info("📝 POST /submit - quizId={}", request.getQuizId());
+
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String username = auth.getName();
             Users user = usersRepository.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
             request.setUserId(user.getId());
 
             QuizResultDetailDTO result = quizService.submitQuiz(request);
+            log.info("✅ Quiz submitted successfully - userId={}, quizId={}, score={}/{}",
+                    user.getId(), request.getQuizId(), result.getScore(), result.getTotalQuestions());
+
             return ResponseEntity.ok(result);
         } catch (Exception e) {
+            log.error("❌ Error submitting quiz: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(Map.of("success", false, "message", "Lỗi: " + e.getMessage()));
         }
@@ -76,6 +101,8 @@ public class QuizController {
     public ResponseEntity<?> getMyQuizHistory() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
+        log.info("📜 GET /history - username: {}", username);
+
         return usersRepository.findByUsername(username)
                 .map(user -> {
                     List<QuizResult> results = quizResultRepository.findByUserOrderByCompletedAtDesc(user);
@@ -86,32 +113,44 @@ public class QuizController {
                                     r.getScore(),
                                     r.getTotalQuestions(),
                                     r.getCompletedAt(),
-                                    r.isCounted()  // thêm trường counted
+                                    r.isCounted()
                             ))
                             .collect(Collectors.toList());
+                    log.info("✅ Found {} history records for user: {}", dtos.size(), username);
                     return ResponseEntity.ok(dtos);
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElseGet(() -> {
+                    log.warn("⚠️ User not found: {}", username);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     @GetMapping("/results/{resultId}")
     public ResponseEntity<?> getQuizResult(@PathVariable Long resultId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
+        log.info("🔍 GET /results/{} - username: {}", resultId, username);
+
         return quizResultRepository.findById(resultId)
                 .map(result -> {
                     if (!result.getUser().getUsername().equals(username)) {
+                        log.warn("⛔ Unauthorized access to result {} by user {}", resultId, username);
                         return ResponseEntity.status(403).body("Không có quyền xem kết quả này");
                     }
                     return ResponseEntity.ok(result);
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElseGet(() -> {
+                    log.warn("⚠️ Quiz result not found with id: {}", resultId);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getUserQuizStats() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
+        log.info("📊 GET /stats - username: {}", username);
+
         return usersRepository.findByUsername(username)
                 .map(user -> {
                     List<QuizResult> results = quizResultRepository.findByUser(user);
@@ -126,15 +165,20 @@ public class QuizController {
                             .max()
                             .orElse(0));
                     stats.put("totalPoints", user.getPoints());
+                    log.info("✅ Stats computed for user: {}", username);
                     return ResponseEntity.ok(stats);
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElseGet(() -> {
+                    log.warn("⚠️ User not found: {}", username);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     @GetMapping("/leaderboard")
     public List<Map<String, Object>> getLeaderboard() {
+        log.info("🏆 GET /leaderboard");
         List<Users> topUsers = usersRepository.findTop10ByOrderByPointsDesc();
-        return topUsers.stream()
+        List<Map<String, Object>> result = topUsers.stream()
                 .map(user -> {
                     Map<String, Object> entry = new HashMap<>();
                     entry.put("username", user.getUsername());
@@ -144,6 +188,8 @@ public class QuizController {
                     return entry;
                 })
                 .collect(Collectors.toList());
+        log.info("✅ Leaderboard returned with {} entries", result.size());
+        return result;
     }
 
     private QuizDTO convertToDTO(Quiz quiz, boolean includeAnswers) {
