@@ -29,8 +29,6 @@ public class AICoachService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // ==================== Public Methods ====================
-
     public String generateAdvice(AICoachRequest request) {
         List<Mistake> mistakes = request.getMistakes();
         if (mistakes == null || mistakes.isEmpty()) {
@@ -38,11 +36,11 @@ public class AICoachService {
         }
 
         try {
-            String prompt = buildPrompt(mistakes);
+            String prompt = buildDetailedPrompt(mistakes);
             return callAI(prompt);
         } catch (Exception e) {
             log.error("Lỗi khi gọi Gemini API: {}", e.getMessage(), e);
-            return buildSmartFallbackAdvice(mistakes);
+            return buildDetailedFallbackAdvice(mistakes);
         }
     }
 
@@ -51,7 +49,7 @@ public class AICoachService {
         if (mistakes == null || mistakes.isEmpty()) {
             return "Không có lỗi để phân tích.";
         }
-        String prompt = buildPrompt(mistakes);
+        String prompt = buildDetailedPrompt(mistakes);
         return callAI(prompt);
     }
 
@@ -61,32 +59,22 @@ public class AICoachService {
 
     // ==================== Private Methods ====================
 
-    private String buildPrompt(List<Mistake> mistakes) {
+    private String buildDetailedPrompt(List<Mistake> mistakes) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Bạn là một gia sư AI chuyên nghiệp. Học sinh vừa làm quiz và có một số câu sai. Dưới đây là danh sách các câu hỏi sai, kèm đáp án đúng và giải thích (nếu có).\n\n");
-        sb.append("📋 **DANH SÁCH CÂU SAI**\n");
-
-        for (int i = 0; i < mistakes.size(); i++) {
-            Mistake m = mistakes.get(i);
-            sb.append("**Câu ").append(i + 1).append(":** ").append(m.getQuestion()).append("\n");
-            sb.append("   - ❌ Câu trả lời của bạn: ").append(m.getUserAnswer()).append("\n");
-            sb.append("   - ✅ Đáp án đúng: ").append(m.getCorrectAnswer()).append("\n");
+        sb.append("Bạn là gia sư AI. Học sinh đã sai các câu sau (kèm đáp án đúng):\n\n");
+        for (Mistake m : mistakes) {
+            sb.append("- Câu hỏi: ").append(m.getQuestion()).append("\n");
+            sb.append("  Đáp án đúng: ").append(m.getCorrectAnswer()).append("\n");
             if (m.getExplanation() != null && !m.getExplanation().isEmpty()) {
-                sb.append("   - 📘 Giải thích: ").append(m.getExplanation()).append("\n");
-            }
-            if (m.getExplanationLink() != null && !m.getExplanationLink().isEmpty()) {
-                sb.append("   - 🔗 Bài viết tham khảo: ").append(m.getExplanationLink()).append("\n");
+                sb.append("  Giải thích: ").append(m.getExplanation()).append("\n");
             }
             sb.append("\n");
         }
-
-        sb.append("Dựa vào thông tin trên, hãy viết một lời khuyên học tập ngắn gọn (khoảng 150-200 từ) bằng tiếng Việt, đi thẳng vào vấn đề, không dài dòng. Lời khuyên cần:\n");
-        sb.append("1. **Phân tích điểm yếu**: Xác định chủ đề/kỹ năng chính mà học sinh còn yếu.\n");
-        sb.append("2. **Nhắc lại ngắn gọn khái niệm quan trọng** liên quan đến câu sai.\n");
-        sb.append("3. **Đề xuất hành động cụ thể**: Nên đọc bài viết nào (nếu có link), làm gì để cải thiện.\n");
-        sb.append("4. **Kết thúc bằng câu động viên ngắn gọn**.\n\n");
-        sb.append("Không mào đầu, không chào hỏi. Bắt đầu ngay bằng phần phân tích. Viết thành một đoạn văn hoàn chỉnh, không bị đứt đoạn.");
-
+        sb.append("Hãy viết một lời khuyên bằng tiếng Việt, dài khoảng 150-200 từ, có cấu trúc rõ ràng gồm 3 phần:\n");
+        sb.append("1. **Điểm yếu chính**: Phân tích xem học sinh yếu ở mảng kiến thức/kỹ năng nào (ví dụ: teamwork, hiểu về AI, giao tiếp, v.v.).\n");
+        sb.append("2. **Điều cần lưu ý**: Nhắc lại ngắn gọn những khái niệm quan trọng liên quan.\n");
+        sb.append("3. **Cách ôn tập**: Đề xuất 2-3 hành động cụ thể (đọc bài viết, thực hành, xem video,...).\n");
+        sb.append("Không chào hỏi, không mào đầu. Trình bày rõ ràng từng phần.\n");
         return sb.toString();
     }
 
@@ -105,8 +93,10 @@ public class AICoachService {
         requestBody.put("contents", contents);
 
         Map<String, Object> generationConfig = new HashMap<>();
-        generationConfig.put("temperature", 0.8);
-        generationConfig.put("maxOutputTokens", 2500);
+        generationConfig.put("temperature", 0.7);
+        generationConfig.put("maxOutputTokens", 800); // đủ cho 150-200 từ tiếng Việt
+        generationConfig.put("topP", 0.9);
+        generationConfig.put("topK", 40);
         requestBody.put("generationConfig", generationConfig);
 
         HttpHeaders headers = new HttpHeaders();
@@ -133,51 +123,35 @@ public class AICoachService {
         }
     }
 
-    private String buildSmartFallbackAdvice(List<Mistake> mistakes) {
-        log.info("Sử dụng fallback thông minh do lỗi kết nối AI");
+    private String buildDetailedFallbackAdvice(List<Mistake> mistakes) {
+        // Phân tích sơ bộ để tìm điểm yếu chính
         Map<String, Integer> topicCount = new HashMap<>();
         for (Mistake m : mistakes) {
-            String question = m.getQuestion().toLowerCase();
-            if (question.contains("đàm phán") || question.contains("negotiation")) {
-                topicCount.put("Đàm phán", topicCount.getOrDefault("Đàm phán", 0) + 1);
-            } else if (question.contains("thời gian") || question.contains("time management")) {
-                topicCount.put("Quản lý thời gian", topicCount.getOrDefault("Quản lý thời gian", 0) + 1);
-            } else if (question.contains("batna")) {
-                topicCount.put("BATNA", topicCount.getOrDefault("BATNA", 0) + 1);
+            String q = m.getQuestion().toLowerCase();
+            if (q.contains("team") || q.contains("nhóm") || q.contains("phối hợp") || q.contains("giao tiếp")) {
+                topicCount.put("kỹ năng làm việc nhóm và giao tiếp", topicCount.getOrDefault("kỹ năng làm việc nhóm và giao tiếp", 0) + 1);
+            } else if (q.contains("ai") || q.contains("công nghệ") || q.contains("dữ liệu")) {
+                topicCount.put("vai trò của AI và công nghệ", topicCount.getOrDefault("vai trò của AI và công nghệ", 0) + 1);
+            } else if (q.contains("văn hóa") || q.contains("đa văn hóa") || q.contains("quốc tế")) {
+                topicCount.put("giao tiếp đa văn hóa", topicCount.getOrDefault("giao tiếp đa văn hóa", 0) + 1);
             } else {
-                topicCount.put("Kiến thức chung", topicCount.getOrDefault("Kiến thức chung", 0) + 1);
+                topicCount.put("kiến thức nền tảng", topicCount.getOrDefault("kiến thức nền tảng", 0) + 1);
             }
         }
 
-        String weakestTopic = topicCount.entrySet().stream()
+        String weakest = topicCount.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
-                .orElse("Kiến thức tổng quát");
+                .orElse("kiến thức tổng quát");
 
+        // Tạo fallback với cấu trúc yêu cầu
         StringBuilder advice = new StringBuilder();
-        advice.append("🧠 **Phân tích điểm yếu của bạn**\n\n");
-        advice.append("Dựa trên các câu sai, tôi nhận thấy bạn cần cải thiện nhiều nhất ở mảng **").append(weakestTopic).append("**.\n\n");
-        advice.append("📚 **Các chủ đề cần ôn tập:**\n");
-        for (Map.Entry<String, Integer> entry : topicCount.entrySet()) {
-            advice.append("   - ").append(entry.getKey()).append(": ").append(entry.getValue()).append(" lỗi\n");
-        }
-        advice.append("\n");
-        advice.append("🔍 **Phương pháp cải thiện:**\n");
-        advice.append("   - Đọc kỹ lại các bài viết được đề cập dưới đây.\n");
-        advice.append("   - Ghi chép lại những khái niệm quan trọng.\n");
-        advice.append("   - Thực hành với các tình huống giả định.\n\n");
-        advice.append("📖 **Danh sách bài viết tham khảo:**\n");
-        for (Mistake m : mistakes) {
-            if (m.getExplanationLink() != null && !m.getExplanationLink().isEmpty()) {
-                advice.append("   - ").append(m.getExplanationLink()).append(" : ").append(m.getQuestion()).append("\n");
-            }
-        }
-        advice.append("\n");
-        advice.append("💡 **Lộ trình ôn tập đề xuất (vài ngày):**\n");
-        advice.append("   - Ngày 1-2: Đọc và hiểu các bài viết về ").append(weakestTopic).append(".\n");
-        advice.append("   - Ngày 3-4: Làm bài tập trắc nghiệm và tự luận.\n");
-        advice.append("   - Ngày 5: Ôn tập lại toàn bộ.\n\n");
-        advice.append("Nếu có thể, hãy kết nối lại AI để nhận lời khuyên chi tiết hơn!");
+        advice.append("**Điểm yếu chính:** Bạn còn yếu ở mảng **").append(weakest).append("**.\n\n");
+        advice.append("**Điều cần lưu ý:** Hãy nhớ rằng thành công không chỉ đến từ cá nhân mà cần sự phối hợp nhóm, và AI chỉ là công cụ hỗ trợ, không thể thay thế kỹ năng con người.\n\n");
+        advice.append("**Cách ôn tập:**\n");
+        advice.append("- Đọc lại các bài viết liên quan đến ").append(weakest).append(".\n");
+        advice.append("- Thực hành qua các tình huống thực tế, thảo luận nhóm.\n");
+        advice.append("- Xem video về kỹ năng mềm và ứng dụng AI.\n");
         return advice.toString();
     }
 }
