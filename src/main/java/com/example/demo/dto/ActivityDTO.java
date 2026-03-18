@@ -14,6 +14,7 @@ public class ActivityDTO {
     private int currentParticipants;
     private String status;
     private int remainingSlots;
+    private String registrationLink; // Thêm trường này
 
     public ActivityDTO() {}
 
@@ -49,4 +50,7 @@ public class ActivityDTO {
     public void setStatus(String status) { this.status = status; }
 
     public int getRemainingSlots() { return maxParticipants - currentParticipants; }
+
+    public String getRegistrationLink() { return registrationLink; }
+    public void setRegistrationLink(String registrationLink) { this.registrationLink = registrationLink; }
 }

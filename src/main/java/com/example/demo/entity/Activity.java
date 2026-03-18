@@ -31,6 +31,9 @@ public class Activity {
     
     private String status; // UPCOMING, ONGOING, FINISHED
     
+    @Column(name = "registration_link", length = 500)
+    private String registrationLink; // Thêm trường này
+    
     public Activity() {}
 
     public Activity(String title, String description, String location, 
@@ -74,4 +77,7 @@ public class Activity {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getRegistrationLink() { return registrationLink; }
+    public void setRegistrationLink(String registrationLink) { this.registrationLink = registrationLink; }
 }

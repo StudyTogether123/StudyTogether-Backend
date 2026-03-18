@@ -20,7 +20,6 @@ public class ActivityController {
     @Autowired
     private ActivityRepository activityRepository;
 
-    // Lấy tất cả hoạt động (chỉ hiện hoạt động công khai)
     @GetMapping
     public List<ActivityDTO> getAllActivities() {
         List<Activity> activities = activityRepository.findAll();
@@ -29,7 +28,6 @@ public class ActivityController {
                 .collect(Collectors.toList());
     }
 
-    // Lấy hoạt động sắp diễn ra
     @GetMapping("/upcoming")
     public List<ActivityDTO> getUpcomingActivities() {
         List<Activity> activities = activityRepository.findByStartDateAfter(LocalDateTime.now());
@@ -38,7 +36,6 @@ public class ActivityController {
                 .collect(Collectors.toList());
     }
 
-    // Lấy hoạt động đang diễn ra
     @GetMapping("/ongoing")
     public List<ActivityDTO> getOngoingActivities() {
         LocalDateTime now = LocalDateTime.now();
@@ -48,7 +45,6 @@ public class ActivityController {
                 .collect(Collectors.toList());
     }
 
-    // Lấy hoạt động theo ID
     @GetMapping("/{id}")
     public ResponseEntity<ActivityDTO> getActivityById(@PathVariable Long id) {
         return activityRepository.findById(id)
@@ -56,7 +52,6 @@ public class ActivityController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Đăng ký tham gia hoạt động (yêu cầu đăng nhập)
     @PostMapping("/{id}/register")
     public ResponseEntity<?> registerActivity(@PathVariable Long id) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -64,9 +59,9 @@ public class ActivityController {
         
         return activityRepository.findById(id)
                 .map(activity -> {
-                    // Kiểm tra thời gian
-                    if (activity.getStartDate().isBefore(LocalDateTime.now())) {
-                        return ResponseEntity.badRequest().body("Hoạt động đã bắt đầu hoặc kết thúc");
+                    // Kiểm tra nếu hoạt động đã kết thúc
+                    if (activity.getEndDate().isBefore(LocalDateTime.now())) {
+                        return ResponseEntity.badRequest().body("Hoạt động đã kết thúc, không thể đăng ký");
                     }
                     
                     // Kiểm tra số lượng
@@ -83,7 +78,6 @@ public class ActivityController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Hủy đăng ký tham gia
     @PostMapping("/{id}/cancel")
     public ResponseEntity<?> cancelRegistration(@PathVariable Long id) {
         return activityRepository.findById(id)
@@ -97,7 +91,6 @@ public class ActivityController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Tìm kiếm hoạt động
     @GetMapping("/search")
     public List<ActivityDTO> searchActivities(@RequestParam String keyword) {
         List<Activity> activities = activityRepository.findByTitleContainingOrDescriptionContaining(keyword, keyword);
@@ -106,7 +99,6 @@ public class ActivityController {
                 .collect(Collectors.toList());
     }
 
-    // Lọc hoạt động theo thời gian
     @GetMapping("/filter")
     public List<ActivityDTO> filterActivities(
             @RequestParam(required = false) LocalDateTime from,
@@ -121,7 +113,6 @@ public class ActivityController {
                 .collect(Collectors.toList());
     }
 
-    // Convert Entity to DTO
     private ActivityDTO convertToDTO(Activity activity) {
         ActivityDTO dto = new ActivityDTO();
         dto.setId(activity.getId());
@@ -134,6 +125,8 @@ public class ActivityController {
         dto.setMaxParticipants(activity.getMaxParticipants());
         dto.setCurrentParticipants(activity.getCurrentParticipants());
         dto.setStatus(determineStatus(activity));
+        // Nếu có trường registrationLink trong entity, thêm vào DTO
+        // dto.setRegistrationLink(activity.getRegistrationLink());
         return dto;
     }
 
