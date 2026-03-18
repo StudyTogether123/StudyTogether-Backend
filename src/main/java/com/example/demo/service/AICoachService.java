@@ -80,13 +80,12 @@ public class AICoachService {
             sb.append("\n");
         }
 
-        sb.append("Dựa vào thông tin trên, hãy viết một lời khuyên học tập ngắn gọn nhưng chi tiết (khoảng 300-400 từ) bằng tiếng Việt, đi thẳng vào vấn đề, không dài dòng. Lời khuyên cần:\n");
-        sb.append("1. **Phân tích điểm yếu**: Xác định các chủ đề/kỹ năng mà học sinh còn yếu (ví dụ: đàm phán, quản lý thời gian, BATNA,...).\n");
-        sb.append("2. **Nhắc lại ngắn gọn khái niệm quan trọng** liên quan đến từng câu sai.\n");
-        sb.append("3. **Đề xuất hành động cụ thể**: Nên đọc bài viết nào (dẫn link từ dữ liệu), làm bài tập gì, xem video nào, thực hành ra sao.\n");
-        sb.append("4. **Gợi ý lộ trình ôn tập nhanh trong vài ngày tới**.\n");
-        sb.append("5. **Kết thúc bằng câu động viên ngắn gọn**.\n\n");
-        sb.append("Không mào đầu, không chào hỏi, không giải thích dài dòng. Bắt đầu ngay bằng phần phân tích.");
+        sb.append("Dựa vào thông tin trên, hãy viết một lời khuyên học tập ngắn gọn (khoảng 150-200 từ) bằng tiếng Việt, đi thẳng vào vấn đề, không dài dòng. Lời khuyên cần:\n");
+        sb.append("1. **Phân tích điểm yếu**: Xác định chủ đề/kỹ năng chính mà học sinh còn yếu.\n");
+        sb.append("2. **Nhắc lại ngắn gọn khái niệm quan trọng** liên quan đến câu sai.\n");
+        sb.append("3. **Đề xuất hành động cụ thể**: Nên đọc bài viết nào (nếu có link), làm gì để cải thiện.\n");
+        sb.append("4. **Kết thúc bằng câu động viên ngắn gọn**.\n\n");
+        sb.append("Không mào đầu, không chào hỏi. Bắt đầu ngay bằng phần phân tích. Viết thành một đoạn văn hoàn chỉnh, không bị đứt đoạn.");
 
         return sb.toString();
     }
@@ -107,7 +106,7 @@ public class AICoachService {
 
         Map<String, Object> generationConfig = new HashMap<>();
         generationConfig.put("temperature", 0.8);
-        generationConfig.put("maxOutputTokens", 2500); // tăng lên 2500 để đảm bảo đủ dài
+        generationConfig.put("maxOutputTokens", 2500);
         requestBody.put("generationConfig", generationConfig);
 
         HttpHeaders headers = new HttpHeaders();
@@ -124,7 +123,10 @@ public class AICoachService {
             log.info("Nhận response từ Gemini sau {} ms, status code: {}", duration, response.getStatusCode());
 
             JsonNode root = objectMapper.readTree(response.getBody());
-            return root.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+            String text = root.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+            log.info("Gemini response text length: {}", text.length());
+            log.debug("Gemini response preview: {}", text.substring(0, Math.min(200, text.length())));
+            return text;
         } catch (HttpClientErrorException e) {
             log.error("Lỗi HTTP khi gọi Gemini: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
             throw e;
@@ -162,8 +164,8 @@ public class AICoachService {
         advice.append("\n");
         advice.append("🔍 **Phương pháp cải thiện:**\n");
         advice.append("   - Đọc kỹ lại các bài viết được đề cập dưới đây.\n");
-        advice.append("   - Ghi chép lại những khái niệm quan trọng (ví dụ: BATNA, phân biệt position và interest).\n");
-        advice.append("   - Thực hành với các tình huống giả định để áp dụng lý thuyết.\n\n");
+        advice.append("   - Ghi chép lại những khái niệm quan trọng.\n");
+        advice.append("   - Thực hành với các tình huống giả định.\n\n");
         advice.append("📖 **Danh sách bài viết tham khảo:**\n");
         for (Mistake m : mistakes) {
             if (m.getExplanationLink() != null && !m.getExplanationLink().isEmpty()) {
@@ -171,12 +173,11 @@ public class AICoachService {
             }
         }
         advice.append("\n");
-        advice.append("💡 **Lộ trình ôn tập đề xuất (1 tuần):**\n");
+        advice.append("💡 **Lộ trình ôn tập đề xuất (vài ngày):**\n");
         advice.append("   - Ngày 1-2: Đọc và hiểu các bài viết về ").append(weakestTopic).append(".\n");
-        advice.append("   - Ngày 3-4: Làm bài tập trắc nghiệm và tự luận liên quan.\n");
-        advice.append("   - Ngày 5: Ôn tập lại toàn bộ và tự giải thích lại các khái niệm.\n");
-        advice.append("   - Ngày 6-7: Tham gia thảo luận nhóm hoặc viết blog tóm tắt kiến thức.\n\n");
-        advice.append("Nếu có thể, hãy kết nối lại AI để nhận lời khuyên chi tiết hơn nhé!");
+        advice.append("   - Ngày 3-4: Làm bài tập trắc nghiệm và tự luận.\n");
+        advice.append("   - Ngày 5: Ôn tập lại toàn bộ.\n\n");
+        advice.append("Nếu có thể, hãy kết nối lại AI để nhận lời khuyên chi tiết hơn!");
         return advice.toString();
     }
 }
