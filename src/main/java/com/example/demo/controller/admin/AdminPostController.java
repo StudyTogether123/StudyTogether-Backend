@@ -56,4 +56,13 @@ public class AdminPostController {
         postService.deletePost(id, username);
         return ResponseEntity.noContent().build();
     }
+
+    // Thêm endpoint để khóa/mở khóa bài viết
+    @PatchMapping("/{id}/lock")
+    public ResponseEntity<PostDTO> toggleLock(@PathVariable Long id, Authentication authentication) {
+        System.out.println("AdminPostController.toggleLock called with id: " + id + " by user: " + authentication.getName());
+        String username = authentication.getName();
+        PostDTO post = postService.toggleLock(id, username);
+        return ResponseEntity.ok(post);
+    }
 }
