@@ -28,6 +28,7 @@ public class QuizResult {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(columnDefinition = "TEXT") // Sửa thành TEXT để lưu JSON dài
     private String answers; // Lưu dưới dạng JSON
 
     @Column(nullable = false)
