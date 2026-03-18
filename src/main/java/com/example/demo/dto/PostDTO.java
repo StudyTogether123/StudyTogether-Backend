@@ -11,5 +11,7 @@ public record PostDTO(
         Boolean locked,
         Integer viewCount,
         LocalDateTime createdAt,
-        String image
+        String image,
+        Long likeCount,
+        Long commentCount
 ) {}

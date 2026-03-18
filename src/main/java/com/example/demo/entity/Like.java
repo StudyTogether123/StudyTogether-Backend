@@ -4,14 +4,11 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "comments")
-public class Comment {
+@Table(name = "likes", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "post_id"}))
+public class Like {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String content;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -24,14 +21,17 @@ public class Comment {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    public Comment() {}
+    public Like() {}
+
+    public Like(Users user, Post post) {
+        this.user = user;
+        this.post = post;
+        this.createdAt = LocalDateTime.now();
+    }
 
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
 
     public Users getUser() { return user; }
     public void setUser(Users user) { this.user = user; }

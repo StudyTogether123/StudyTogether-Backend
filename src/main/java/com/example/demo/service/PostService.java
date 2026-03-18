@@ -3,8 +3,11 @@ package com.example.demo.service;
 import com.example.demo.dto.PostDTO;
 import com.example.demo.dto.request.CreatePostRequest;
 import com.example.demo.dto.request.UpdatePostRequest;
+import com.example.demo.entity.Like;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.Users;
+import com.example.demo.repository.CommentRepository;
+import com.example.demo.repository.LikeRepository;
 import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.UsersRepository;
 import org.springframework.stereotype.Service;
@@ -18,10 +21,17 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UsersRepository usersRepository;
+    private final LikeRepository likeRepository;
+    private final CommentRepository commentRepository;
 
-    public PostService(PostRepository postRepository, UsersRepository usersRepository) {
+    public PostService(PostRepository postRepository, 
+                       UsersRepository usersRepository,
+                       LikeRepository likeRepository,
+                       CommentRepository commentRepository) {
         this.postRepository = postRepository;
         this.usersRepository = usersRepository;
+        this.likeRepository = likeRepository;
+        this.commentRepository = commentRepository;
     }
 
     // ========== Lấy tất cả bài viết ==========
@@ -37,6 +47,47 @@ public class PostService {
         return postRepository.findById(id)
                 .map(this::mapToDTO)
                 .orElse(null);
+    }
+
+    // ========== Lấy số like của bài viết ==========
+    public Long getLikeCount(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết với id: " + postId));
+        return likeRepository.countByPost(post);
+    }
+
+    // ========== Lấy số comment của bài viết ==========
+    public Long getCommentCount(Long postId) {
+        return commentRepository.countByPostId(postId);
+    }
+
+    // ========== Toggle like bài viết ==========
+    @Transactional
+    public boolean toggleLike(Long postId, String username) {
+        Users user = usersRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết với id: " + postId));
+
+        return likeRepository.findByUserAndPost(user, post)
+                .map(like -> {
+                    likeRepository.delete(like);
+                    return false; // unlike
+                })
+                .orElseGet(() -> {
+                    Like like = new Like(user, post);
+                    likeRepository.save(like);
+                    return true; // like
+                });
+    }
+
+    // ========== Kiểm tra user đã like bài viết chưa ==========
+    public boolean isLikedByUser(Long postId, String username) {
+        Users user = usersRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết với id: " + postId));
+        return likeRepository.existsByUserAndPost(user, post);
     }
 
     // ========== Tạo bài viết mới ==========
@@ -87,7 +138,6 @@ public class PostService {
             if (request.locked() != null) {
                 post.setLocked(request.locked());
             }
-            // Nếu request không gửi locked, giữ nguyên giá trị cũ
             System.out.println("Đã cập nhật các trường");
 
             // 4. Lưu
@@ -137,6 +187,8 @@ public class PostService {
 
     // ========== Chuyển đổi Entity -> DTO ==========
     private PostDTO mapToDTO(Post post) {
+        Long likeCount = likeRepository.countByPost(post);
+        Long commentCount = commentRepository.countByPostId(post.getId());
         return new PostDTO(
                 post.getId(),
                 post.getTitle(),
@@ -146,7 +198,9 @@ public class PostService {
                 post.getLocked(),
                 post.getViewCount(),
                 post.getCreatedAt(),
-                post.getImage()
+                post.getImage(),
+                likeCount,
+                commentCount
         );
     }
 }
