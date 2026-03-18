@@ -74,11 +74,20 @@ public class PostService {
             checkPermission(post, username);
             System.out.println("Kiểm tra quyền thành công");
 
-            // 3. Cập nhật
-            post.setTitle(request.title());
-            post.setContent(request.content());
-            post.setCategory(request.category());
-            post.setLocked(request.locked());
+            // 3. Cập nhật các trường, chỉ set nếu request có giá trị (không null)
+            if (request.title() != null) {
+                post.setTitle(request.title());
+            }
+            if (request.content() != null) {
+                post.setContent(request.content());
+            }
+            if (request.category() != null) {
+                post.setCategory(request.category());
+            }
+            if (request.locked() != null) {
+                post.setLocked(request.locked());
+            }
+            // Nếu request không gửi locked, giữ nguyên giá trị cũ
             System.out.println("Đã cập nhật các trường");
 
             // 4. Lưu
