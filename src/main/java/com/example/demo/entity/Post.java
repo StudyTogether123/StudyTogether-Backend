@@ -33,6 +33,10 @@ public class Post {
     @Column(nullable = false)
     private String type = "article"; // "article" cho kiến thức, "community" cho cộng đồng
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PostStatus status = PostStatus.PENDING;
+
     public Post() {
     }
 
@@ -125,5 +129,13 @@ public class Post {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public PostStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(PostStatus status) {
+        this.status = status;
     }
 }

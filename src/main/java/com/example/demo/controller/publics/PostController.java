@@ -46,7 +46,7 @@ public class PostController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return postService.getPostsByType("article", pageable);
+        return postService.getPostsByTypeAndStatus("article", com.example.demo.entity.PostStatus.APPROVED, pageable);
     }
 
     // ========== LẤY BÀI VIẾT CỘNG ĐỒNG (COMMUNITY) ==========
@@ -55,7 +55,7 @@ public class PostController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return postService.getPostsByType("community", pageable);
+        return postService.getCommunityPosts(pageable);
     }
 
     // ========== LẤY CHI TIẾT BÀI VIẾT ==========

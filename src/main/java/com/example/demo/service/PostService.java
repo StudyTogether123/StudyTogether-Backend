@@ -5,6 +5,7 @@ import com.example.demo.dto.request.CreatePostRequest;
 import com.example.demo.dto.request.UpdatePostRequest;
 import com.example.demo.entity.Like;
 import com.example.demo.entity.Post;
+import com.example.demo.entity.PostStatus;
 import com.example.demo.entity.Users;
 import com.example.demo.repository.CommentRepository;
 import com.example.demo.repository.LikeRepository;
@@ -36,7 +37,7 @@ public class PostService {
         this.commentRepository = commentRepository;
     }
 
-    // ========== Lấy tất cả bài viết ==========
+    // ========== Lấy tất cả bài viết (không phân biệt status) – dùng cho admin? ==========
     public List<PostDTO> getAllPosts() {
         return postRepository.findAll()
                 .stream()
@@ -44,13 +45,19 @@ public class PostService {
                 .collect(Collectors.toList());
     }
 
-    // ========== Lấy bài viết theo type (có phân trang) ==========
-    public Page<PostDTO> getPostsByType(String type, Pageable pageable) {
-        return postRepository.findByType(type, pageable)
+    // ========== Lấy bài viết theo type và status (chỉ lấy bài đã duyệt) ==========
+    public Page<PostDTO> getPostsByTypeAndStatus(String type, PostStatus status, Pageable pageable) {
+        return postRepository.findByTypeAndStatus(type, status, pageable)
                 .map(this::mapToDTO);
     }
 
-    // ========== Lấy bài viết theo ID ==========
+    // ========== Lấy bài viết cộng đồng đã duyệt ==========
+    public Page<PostDTO> getCommunityPosts(Pageable pageable) {
+        return postRepository.findByTypeAndStatus("community", PostStatus.APPROVED, pageable)
+                .map(this::mapToDTO);
+    }
+
+    // ========== Lấy bài viết theo ID (không quan tâm status) ==========
     public PostDTO getPostById(Long id) {
         return postRepository.findById(id)
                 .map(this::mapToDTO)
@@ -98,7 +105,7 @@ public class PostService {
         return likeRepository.existsByUserAndPost(user, post);
     }
 
-    // ========== Tạo bài viết mới (ĐÃ CẬP NHẬT ĐỂ NHẬN TYPE) ==========
+    // ========== Tạo bài viết mới (có set status tùy theo type) ==========
     @Transactional
     public PostDTO create(CreatePostRequest request, String username) {
         Users user = usersRepository.findByUsername(username)
@@ -110,8 +117,15 @@ public class PostService {
                 username,
                 request.category()
         );
-        // Set type từ request
         post.setType(request.type());
+
+        // Set status: nếu là community thì PENDING, nếu là article thì APPROVED (hoặc cũng PENDING tùy bạn)
+        if ("community".equals(request.type())) {
+            post.setStatus(PostStatus.PENDING);
+        } else {
+            // Bài viết kiến thức có thể được duyệt ngay, hoặc cũng qua duyệt. Tùy chỉnh.
+            post.setStatus(PostStatus.APPROVED);
+        }
 
         Post saved = postRepository.save(post);
         return mapToDTO(saved);
@@ -148,6 +162,7 @@ public class PostService {
             if (request.locked() != null) {
                 post.setLocked(request.locked());
             }
+            // Sau khi sửa, nếu là bài community thì có thể reset status về PENDING? Tùy logic. Ở đây giữ nguyên.
             System.out.println("Đã cập nhật các trường");
 
             // 4. Lưu
@@ -176,6 +191,30 @@ public class PostService {
         postRepository.deleteById(id);
     }
 
+    // ========== ADMIN: Lấy tất cả bài viết chờ duyệt ==========
+    public Page<PostDTO> getPendingPosts(Pageable pageable) {
+        return postRepository.findByStatus(PostStatus.PENDING, pageable)
+                .map(this::mapToDTO);
+    }
+
+    // ========== ADMIN: Duyệt bài viết ==========
+    @Transactional
+    public void approvePost(Long id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết với id: " + id));
+        post.setStatus(PostStatus.APPROVED);
+        postRepository.save(post);
+    }
+
+    // ========== ADMIN: Từ chối bài viết ==========
+    @Transactional
+    public void rejectPost(Long id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết với id: " + id));
+        post.setStatus(PostStatus.REJECTED);
+        postRepository.save(post);
+    }
+
     // ========== Helper: kiểm tra quyền ==========
     private void checkPermission(Post post, String username) {
         // Nếu là tác giả -> cho phép
@@ -195,7 +234,7 @@ public class PostService {
         }
     }
 
-    // ========== Chuyển đổi Entity -> DTO ==========
+    // ========== Chuyển đổi Entity -> DTO (đã bao gồm status) ==========
     private PostDTO mapToDTO(Post post) {
         Long likeCount = likeRepository.countByPost(post);
         Long commentCount = commentRepository.countByPostId(post.getId());
@@ -211,7 +250,8 @@ public class PostService {
                 post.getImage(),
                 likeCount,
                 commentCount,
-                post.getType()
+                post.getType(),
+                post.getStatus()
         );
     }
 }

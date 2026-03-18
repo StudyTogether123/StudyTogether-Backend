@@ -1,6 +1,7 @@
 package com.example.demo.dto;
 
 import java.time.LocalDateTime;
+import com.example.demo.entity.PostStatus;
 
 public record PostDTO(
         Long id,
@@ -14,5 +15,6 @@ public record PostDTO(
         String image,
         Long likeCount,
         Long commentCount,
-        String type
+        String type,
+        PostStatus status
 ) {}
