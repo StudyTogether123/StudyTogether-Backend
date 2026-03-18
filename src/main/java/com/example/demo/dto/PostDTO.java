@@ -13,5 +13,6 @@ public record PostDTO(
         LocalDateTime createdAt,
         String image,
         Long likeCount,
-        Long commentCount
+        Long commentCount,
+        String type
 ) {}

@@ -28,8 +28,10 @@ public class Post {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    // Thêm trường image (URL ảnh đại diện)
     private String image;
+
+    @Column(nullable = false)
+    private String type = "article"; // "article" cho kiến thức, "community" cho cộng đồng
 
     public Post() {
     }
@@ -44,7 +46,7 @@ public class Post {
         this.createdAt = LocalDateTime.now();
     }
 
-    // Getter và Setter
+    // Getters và Setters
     public Long getId() {
         return id;
     }
@@ -115,5 +117,13 @@ public class Post {
 
     public void setImage(String image) {
         this.image = image;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 }

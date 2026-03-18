@@ -10,6 +10,8 @@ import com.example.demo.repository.CommentRepository;
 import com.example.demo.repository.LikeRepository;
 import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.UsersRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +42,12 @@ public class PostService {
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+
+    // ========== Lấy bài viết theo type (có phân trang) ==========
+    public Page<PostDTO> getPostsByType(String type, Pageable pageable) {
+        return postRepository.findByType(type, pageable)
+                .map(this::mapToDTO);
     }
 
     // ========== Lấy bài viết theo ID ==========
@@ -90,7 +98,7 @@ public class PostService {
         return likeRepository.existsByUserAndPost(user, post);
     }
 
-    // ========== Tạo bài viết mới ==========
+    // ========== Tạo bài viết mới (ĐÃ CẬP NHẬT ĐỂ NHẬN TYPE) ==========
     @Transactional
     public PostDTO create(CreatePostRequest request, String username) {
         Users user = usersRepository.findByUsername(username)
@@ -102,6 +110,8 @@ public class PostService {
                 username,
                 request.category()
         );
+        // Set type từ request
+        post.setType(request.type());
 
         Post saved = postRepository.save(post);
         return mapToDTO(saved);
@@ -200,7 +210,8 @@ public class PostService {
                 post.getCreatedAt(),
                 post.getImage(),
                 likeCount,
-                commentCount
+                commentCount,
+                post.getType()
         );
     }
 }
