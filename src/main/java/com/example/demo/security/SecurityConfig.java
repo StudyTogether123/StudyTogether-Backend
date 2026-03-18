@@ -61,8 +61,10 @@ public class SecurityConfig {
                         // Public GET cho posts (cho phép tất cả xem)
                         .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
 
-                        // POST, PUT, DELETE chỉ dành cho ADMIN
-                        .requestMatchers(HttpMethod.POST, "/api/posts").hasRole("ADMIN")
+                        // POST bài viết: yêu cầu xác thực (người dùng đã đăng nhập)
+                        .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
+
+                        // PUT và DELETE: chỉ dành cho ADMIN (hoặc tác giả, sẽ xử lý trong service)
                         .requestMatchers(HttpMethod.PUT, "/api/posts/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/posts/**").hasRole("ADMIN")
 
@@ -75,7 +77,7 @@ public class SecurityConfig {
                                 "/api/user/**"
                         ).authenticated()
 
-                        // Admin endpoints (đã có ở trên, nhưng giữ lại cho các admin khác)
+                        // Admin endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()
@@ -103,7 +105,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Cho phép tất cả các origin (có thể chỉ định cụ thể nếu cần)
+        // Cho phép tất cả các origin
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
