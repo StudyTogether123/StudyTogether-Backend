@@ -51,15 +51,21 @@ public class SecurityConfig {
 
                         // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
+
+                        // Public GET cho knowledge và community (các endpoint mới)
+                        .requestMatchers(HttpMethod.GET, "/api/posts/knowledge").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/posts/community").permitAll()
+
+                        // Public GET cho tất cả bài viết (bao gồm cả các subpath)
+                        .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
+
+                        // Các endpoint public khác
                         .requestMatchers(
                                 "/api/activities",
                                 "/api/activities/**",
                                 "/api/quizzes/daily",
                                 "/api/quizzes/leaderboard"
                         ).permitAll()
-
-                        // Public GET cho posts (cho phép tất cả xem)
-                        .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
 
                         // POST bài viết: yêu cầu xác thực (người dùng đã đăng nhập)
                         .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
