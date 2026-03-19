@@ -1,8 +1,10 @@
 package com.example.demo.controller.admin;
 
 import com.example.demo.dto.PostDTO;
+import com.example.demo.dto.request.CreatePostRequest;
 import com.example.demo.dto.request.UpdatePostRequest;
 import com.example.demo.service.PostService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -38,6 +40,27 @@ public class AdminPostController {
         return ResponseEntity.ok(post);
     }
 
+    @PostMapping
+    public ResponseEntity<PostDTO> createPost(@RequestBody CreatePostRequest request,
+                                              Authentication authentication) {
+        System.out.println("AdminPostController.createPost called by user: " + authentication.getName());
+        String username = authentication.getName();
+
+        // Nếu type không được gửi lên, mặc định là "article"
+        if (request.type() == null || request.type().isBlank()) {
+            request = new CreatePostRequest(
+                    request.title(),
+                    request.content(),
+                    request.category(),
+                    "article",
+                    request.image()
+            );
+        }
+
+        PostDTO created = postService.create(request, username);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<PostDTO> updatePost(@PathVariable Long id,
                                               @RequestBody UpdatePostRequest request,
@@ -57,7 +80,7 @@ public class AdminPostController {
         return ResponseEntity.noContent().build();
     }
 
-    // Thêm endpoint để khóa/mở khóa bài viết
+    // Endpoint để khóa/mở khóa bài viết (nếu cần, nhưng trong frontend admin đã bỏ nút khóa)
     @PatchMapping("/{id}/lock")
     public ResponseEntity<PostDTO> toggleLock(@PathVariable Long id, Authentication authentication) {
         System.out.println("AdminPostController.toggleLock called with id: " + id + " by user: " + authentication.getName());
