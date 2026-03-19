@@ -107,27 +107,28 @@ public class PostService {
 
     // ========== Tạo bài viết mới ==========
     @Transactional
-    public PostDTO create(CreatePostRequest request, String username) {
-        Users user = usersRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+public PostDTO create(CreatePostRequest request, String username) {
+    Users user = usersRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-        Post post = new Post(
-                request.title(),
-                request.content(),
-                username,
-                request.category()
-        );
-        post.setType(request.type());
+    Post post = new Post(
+            request.title(),
+            request.content(),
+            username,
+            request.category()
+    );
+    post.setType(request.type());
+    post.setImage(request.image());  // thêm dòng này
 
-        if ("community".equals(request.type())) {
-            post.setStatus(PostStatus.PENDING);
-        } else {
-            post.setStatus(PostStatus.APPROVED);
-        }
-
-        Post saved = postRepository.save(post);
-        return mapToDTO(saved);
+    if ("community".equals(request.type())) {
+        post.setStatus(PostStatus.PENDING);
+    } else {
+        post.setStatus(PostStatus.APPROVED);
     }
+
+    Post saved = postRepository.save(post);
+    return mapToDTO(saved);
+}
 
     // ========== Cập nhật bài viết ==========
     @Transactional

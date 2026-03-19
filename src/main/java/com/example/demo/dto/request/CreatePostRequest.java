@@ -4,5 +4,6 @@ public record CreatePostRequest(
         String title,
         String content,
         String category,
-        String type
+        String type,
+        String image   // thêm dòng này
 ) {}
